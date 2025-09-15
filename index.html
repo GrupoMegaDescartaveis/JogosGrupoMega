@@ -1,145 +1,100 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jogo da Memória</title>
-<style>
-body { margin:0; font-family:Arial,sans-serif; background:#f7f7f7; display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:10px; }
-h1 { margin:10px 0; font-size:2rem; text-align:center; }
-.menu, .game, .finalScore { display:none; flex-direction:column; align-items:center; justify-content:center; width:100%; }
-.menu.active, .game.active, .finalScore.active { display:flex; }
-button { margin:8px; padding:15px 25px; font-size:1.2rem; border:none; border-radius:8px; background:#4CAF50; color:white; cursor:pointer; width:70%; max-width:300px; }
-button:hover { background:#45a049; }
-.hud { display:flex; justify-content:space-between; align-items:center; width:90%; max-width:500px; margin:10px auto; font-weight:bold; font-size:1.1rem; }
-.grid { display:grid; gap:10px; justify-content:center; padding:10px; max-width:95vw; }
-.card { width:70px; height:70px; background:#2196F3; border-radius:10px; cursor:pointer; user-select:none; transition:transform 0.3s; background-size:cover; background-position:center; }
-.card.flipped { background-color:#fff; transform:rotateY(180deg); }
-.finalScore { font-size:2rem; font-weight:bold; text-align:center; background:#fff; padding:30px 50px; border-radius:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2); margin-top:50px; }
-@media(max-width:600px){ .card{ width:55px; height:55px; } button{ font-size:1rem; padding:12px 20px; } .hud{ font-size:1rem; } }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jogo da Memória</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f2f2f2;
+      font-family: sans-serif;
+    }
+
+    #game {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2vw;
+      width: 90vw;
+      max-width: 600px;
+    }
+
+    .card {
+      aspect-ratio: 1 / 1;
+      background: #4caf50;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 6vw;
+      color: #fff;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.3s;
+    }
+
+    .card.flipped {
+      background: #ff9800;
+      transform: rotateY(180deg);
+    }
+
+    @media (min-width: 768px) {
+      #game {
+        gap: 10px;
+        width: 500px;
+      }
+      .card {
+        font-size: 2rem;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div id="game"></div>
 
-<h1>🐾 Jogo da Memória 🐾</h1>
+  <script>
+    const emojis = ['🍎','🍌','🍓','🍇','🍉','🍍','🥝','🍒'];
+    const cards = [...emojis, ...emojis]
+      .sort(() => Math.random() - 0.5);
 
-<div class="menu active" id="menu">
-<p>Escolha o nível:</p>
-<button onclick="startGame(1)">Nível 1</button>
-<button onclick="startGame(2)">Nível 2</button>
-<button onclick="startGame(3)">Nível 3</button>
-<button onclick="startGame(4)">Nível 4</button>
-<button onclick="startGame(5)">Nível 5</button>
-</div>
+    const game = document.getElementById('game');
+    let flipped = [];
 
-<div class="game" id="game">
-<div class="hud">
-<div>⏱️ Tempo: <span id="time">0</span>s</div>
-<div>⭐ Pontos: <span id="score">0</span></div>
-</div>
-<div class="grid" id="grid"></div>
-</div>
+    cards.forEach((emoji) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.emoji = emoji;
+      card.addEventListener('click', () => flipCard(card));
+      game.appendChild(card);
+    });
 
-<div class="finalScore" id="finalScoreDiv">
-<p>🏆 Pontuação final: <span id="finalScoreCenter">0</span> ⭐</p>
-<button onclick="restartGame()">Reiniciar</button>
-</div>
+    function flipCard(card) {
+      if (flipped.length < 2 && !card.classList.contains('flipped')) {
+        card.classList.add('flipped');
+        card.textContent = card.dataset.emoji;
+        flipped.push(card);
 
-<audio id="flipSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
-<audio id="matchSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
-<audio id="errorSound" src="https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg"></audio>
-<audio id="winSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
-
-<script>
-const menu=document.getElementById("menu");
-const game=document.getElementById("game");
-const grid=document.getElementById("grid");
-const timeEl=document.getElementById("time");
-const scoreEl=document.getElementById("score");
-const finalScoreDiv=document.getElementById("finalScoreDiv");
-const finalScoreCenter=document.getElementById("finalScoreCenter");
-
-const flipSound=document.getElementById("flipSound");
-const matchSound=document.getElementById("matchSound");
-const errorSound=document.getElementById("errorSound");
-const winSound=document.getElementById("winSound");
-
-let level=1, score=0, scores={}, firstCard=null, lock=false, matchedPairs=0, totalPairs=0, time=0, timer=null;
-
-const animalImages=[
-"https://img.icons8.com/color/96/dog.png",
-"https://img.icons8.com/color/96/cat.png",
-"https://img.icons8.com/color/96/elephant.png",
-"https://img.icons8.com/color/96/lion.png",
-"https://img.icons8.com/color/96/duck.png",
-"https://img.icons8.com/color/96/panda.png",
-"https://img.icons8.com/color/96/pig.png",
-"https://img.icons8.com/color/96/rabbit.png",
-"https://img.icons8.com/color/96/turtle.png",
-"https://img.icons8.com/color/96/horse.png"
-];
-
-function startGame(lvl){
-  level=lvl; score=0; scores={};
-  menu.classList.remove("active"); finalScoreDiv.classList.remove("active");
-  game.classList.add("active"); setupLevel();
-}
-
-function setupLevel(){
-  grid.innerHTML=""; firstCard=null; lock=false; matchedPairs=0; time=0;
-  clearInterval(timer); timeEl.textContent=0;
-  totalPairs=level*2;
-  let chosenAnimals=animalImages.slice(0,totalPairs);
-  const values=[...chosenAnimals,...chosenAnimals].sort(()=>Math.random()-0.5);
-  const columns=Math.ceil(Math.sqrt(values.length));
-  grid.style.gridTemplateColumns=`repeat(${columns}, 1fr)`;
-  values.forEach(v=>{
-    const card=document.createElement("div");
-    card.classList.add("card"); card.dataset.value=v;
-    card.style.backgroundImage="url('https://via.placeholder.com/70/2196F3/FFFFFF?text=?')";
-    card.addEventListener("click",flipCard); grid.appendChild(card);
-  });
-  timer=setInterval(()=>{time++; timeEl.textContent=time;},1000);
-  updateScore();
-}
-
-function flipCard(e){
-  const card=e.target;
-  if(lock || card.classList.contains("flipped")) return;
-  card.classList.add("flipped"); card.style.backgroundImage=`url('${card.dataset.value}')`;
-  flipSound.currentTime=0; flipSound.play().catch(e=>console.log(e));
-  if(!firstCard){ firstCard=card; } else {
-    if(firstCard.dataset.value===card.dataset.value){
-      firstCard=null; matchedPairs++; score+=50; updateScore();
-      matchSound.currentTime=0; matchSound.play().catch(e=>console.log(e));
-      if(matchedPairs===totalPairs) setTimeout(winLevel,600);
-    } else {
-      lock=true; score=Math.max(0,score-10); updateScore();
-      errorSound.currentTime=0; errorSound.play().catch(e=>console.log(e));
-      setTimeout(()=>{
-        card.classList.remove("flipped"); card.style.backgroundImage="url('https://via.placeholder.com/70/2196F3/FFFFFF?text=?')";
-        firstCard.classList.remove("flipped"); firstCard.style.backgroundImage="url('https://via.placeholder.com/70/2196F3/FFFFFF?text=?')";
-        firstCard=null; lock=false;
-      },1000);
+        if (flipped.length === 2) {
+          setTimeout(checkMatch, 800);
+        }
+      }
     }
-  }
-}
 
-function winLevel(){
-  clearInterval(timer);
-  score+=Math.max(0,(totalPairs*20)-time*2);
-  scores[level]=score;
-  winSound.currentTime=0; winSound.play().catch(e=>console.log(e));
-  if(level<5){ level++; setupLevel(); } else {
-    finalScoreCenter.textContent=Object.values(scores).reduce((a,b)=>a+b,0);
-    game.classList.remove("active"); finalScoreDiv.classList.add("active");
-  }
-  updateScore();
-}
-
-function updateScore(){ scoreEl.textContent=score; }
-
-function restartGame(){ level=1; score=0; scores={}; finalScoreDiv.classList.remove("active"); menu.classList.add("active"); }
-</script>
+    function checkMatch() {
+      const [a, b] = flipped;
+      if (a.dataset.emoji !== b.dataset.emoji) {
+        a.classList.remove('flipped');
+        b.classList.remove('flipped');
+        a.textContent = '';
+        b.textContent = '';
+      }
+      flipped = [];
+    }
+  </script>
 </body>
 </html>
