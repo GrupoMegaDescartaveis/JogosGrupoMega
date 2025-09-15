@@ -21,7 +21,7 @@ body {
   min-height: 100vh;
 }
 h1 {
-  margin: 5px 0;
+  margin: 10px 0;
   font-size: 2rem;
   text-align: center;
 }
@@ -59,11 +59,10 @@ button:hover { background:#45a049; }
 }
 .grid {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
   width: 95%;
   max-width: 600px;
-  flex-grow: 1;
 }
 .card {
   aspect-ratio: 1/1;
@@ -74,6 +73,8 @@ button:hover { background:#45a049; }
   transition: transform 0.3s;
   background-size: cover;
   background-position: center;
+  max-width: 80px;  /* Limite máximo das cartas */
+  width: 100%;
 }
 .card.flipped {
   background-color:#fff;
@@ -92,6 +93,7 @@ button:hover { background:#45a049; }
 @media(max-width:600px){
   .hud { font-size: 1rem; }
   button { font-size: 1rem; padding: 10px 15px; }
+  .card { max-width: 65px; }  /* Ajusta no celular */
 }
 </style>
 </head>
@@ -162,13 +164,6 @@ function startGame(lvl){
   setupLevel();
 }
 
-function adjustGridHeight(){
-  const hudHeight = document.querySelector('.hud').offsetHeight;
-  const titleHeight = document.querySelector('h1').offsetHeight;
-  const availableHeight = window.innerHeight - hudHeight - titleHeight - 20; 
-  grid.style.height = availableHeight + 'px';
-}
-
 function setupLevel(){
   grid.innerHTML="";
   firstCard=null;
@@ -182,8 +177,8 @@ function setupLevel(){
   let chosenAnimals = animalImages.slice(0,totalPairs);
   const values = [...chosenAnimals,...chosenAnimals].sort(()=>Math.random()-0.5);
 
-  const maxCols = Math.ceil(Math.sqrt(values.length));
-  grid.style.gridTemplateColumns = `repeat(${maxCols}, 1fr)`;
+  const columns = Math.ceil(Math.sqrt(values.length));
+  grid.style.gridTemplateColumns = `repeat(${columns}, minmax(50px, 1fr))`;
 
   values.forEach(v=>{
     const card=document.createElement("div");
@@ -193,8 +188,6 @@ function setupLevel(){
     card.addEventListener("click", flipCard);
     grid.appendChild(card);
   });
-
-  adjustGridHeight();
 
   timer=setInterval(()=>{
     time++;
@@ -250,8 +243,6 @@ function restartGame(){
   finalScoreDiv.classList.remove("active"); 
   menu.classList.add("active"); 
 }
-
-window.addEventListener('resize', adjustGridHeight);
 </script>
 </body>
 </html>
